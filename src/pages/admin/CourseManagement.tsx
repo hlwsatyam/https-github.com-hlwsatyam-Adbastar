@@ -28,9 +28,9 @@ export default function CourseManagement() {
     title: "",
     description: "",
     price: "",
+    videoUrl: "",
   });
   const [thumbnail, setThumbnail] = useState<File | null>(null);
-  const [video, setVideo] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -55,13 +55,13 @@ export default function CourseManagement() {
         title: course.title,
         description: course.description,
         price: course.price.toString(),
+        videoUrl: course.videoUrl,
       });
     } else {
       setEditingCourse(null);
-      setFormData({ title: "", description: "", price: "" });
+      setFormData({ title: "", description: "", price: "", videoUrl: "" });
     }
     setThumbnail(null);
-    setVideo(null);
     setShowModal(true);
   };
 
@@ -73,8 +73,8 @@ export default function CourseManagement() {
     data.append("title", formData.title);
     data.append("description", formData.description);
     data.append("price", formData.price);
+    data.append("videoUrl", formData.videoUrl);
     if (thumbnail) data.append("thumbnail", thumbnail);
-    if (video) data.append("video", video);
 
     try {
       if (editingCourse) {
@@ -284,24 +284,17 @@ export default function CourseManagement() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-white/70 ml-1">Course Video</label>
-                  <div className="relative">
+                  <label className="text-sm font-medium text-white/70 ml-1">Course Video Link (YouTube/Vimeo/Direct)</label>
+                  <div className="relative group">
+                    <Video className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30 group-focus-within:text-emerald-400 transition-colors" />
                     <input
-                      type="file"
-                      accept="video/*"
-                      onChange={(e) => setVideo(e.target.files?.[0] || null)}
-                      className="hidden"
-                      id="video-upload"
+                      type="text"
+                      required
+                      value={formData.videoUrl}
+                      onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
+                      placeholder="https://youtube.com/watch?v=..."
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
                     />
-                    <label
-                      htmlFor="video-upload"
-                      className="flex items-center gap-2 w-full bg-white/5 border border-white/10 rounded-2xl py-3 px-4 cursor-pointer hover:bg-white/10 transition-all"
-                    >
-                      <Video className="w-4 h-4 text-white/40" />
-                      <span className="text-sm text-white/60 truncate">
-                        {video ? video.name : "Choose Video"}
-                      </span>
-                    </label>
                   </div>
                 </div>
 

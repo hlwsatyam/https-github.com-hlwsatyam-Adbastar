@@ -118,9 +118,9 @@ export default function Overview() {
               <BookOpen className="w-8 h-8 text-emerald-400" />
               <span className="font-bold text-emerald-400">Add Course</span>
             </Link>
-            <Link to="/admin/students" className="p-6 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex flex-col items-center gap-3 hover:bg-blue-500/20 transition-all">
-              <Users className="w-8 h-8 text-blue-400" />
-              <span className="font-bold text-blue-400">Manage Students</span>
+            <Link to="/admin/enrollments" className="p-6 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl flex flex-col items-center gap-3 hover:bg-yellow-500/20 transition-all">
+              <Clock className="w-8 h-8 text-yellow-500" />
+              <span className="font-bold text-yellow-500">Enrollment Requests</span>
             </Link>
           </div>
         </div>

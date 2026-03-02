@@ -2,9 +2,10 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { motion } from "motion/react";
-import { Play, Lock, Unlock, CheckCircle2, Users, Star, Clock, ArrowLeft, Loader2, IndianRupee, ShieldCheck } from "lucide-react";
+import { Play, Lock, Unlock, CheckCircle2, Users, Star, Clock, ArrowLeft, Loader2, IndianRupee, ShieldCheck, QrCode, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
+import { AnimatePresence } from "motion/react";
 
 // @ts-ignore
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_your_key_id";
@@ -32,31 +33,39 @@ export default function CourseDetails() {
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEnrolled, setIsEnrolled] = useState(false);
+  const [enrollmentStatus, setEnrollmentStatus] = useState<string>("none");
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [settings, setSettings] = useState<any>(null);
 
   useEffect(() => {
-    const fetchCourse = async () => {
+    const fetchData = async () => {
       try {
-        const { data } = await axios.get(`/api/courses/${id}`);
-        setCourse(data);
+        const { data: courseData } = await axios.get(`/api/courses/${id}`);
+        setCourse(courseData);
+
+        const { data: settingsData } = await axios.get("/api/admin/settings");
+        setSettings(settingsData);
+
         if (user) {
           const { data: enrollData } = await axios.get(`/api/courses/${id}/enrollment`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           setIsEnrolled(enrollData.enrolled);
+          setEnrollmentStatus(enrollData.status);
         }
       } catch (error) {
-        console.error("Error fetching course", error);
+        console.error("Error fetching data", error);
         toast.error("Course not found");
         navigate("/");
       } finally {
         setLoading(false);
       }
     };
-    fetchCourse();
+    fetchData();
   }, [id, user, token, navigate]);
 
-  const handleEnroll = async () => {
+  const handleRequestEnrollment = async () => {
     if (!user) {
       toast.error("Please login to purchase this course");
       navigate("/login");
@@ -65,55 +74,33 @@ export default function CourseDetails() {
 
     setPaymentLoading(true);
     try {
-      const { data: order } = await axios.post(
-        "/api/payments/order",
-        { courseId: id },
+      await axios.post(
+        `/api/courses/${id}/request-enrollment`,
+        {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
-      const options = {
-        key: RAZORPAY_KEY_ID,
-        amount: order.amount,
-        currency: order.currency,
-        name: "Lumina Academy",
-        description: `Purchase ${course?.title}`,
-        order_id: order.id,
-        handler: async (response: any) => {
-          try {
-            await axios.post(
-              "/api/payments/verify",
-              {
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-              },
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
-            toast.success("Payment successful! Course unlocked.");
-            setIsEnrolled(true);
-            // Refresh user data to update enrolledCourses
-            const { data: userData } = await axios.get("/api/auth/me", {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            login({ ...userData, token });
-          } catch (error) {
-            toast.error("Payment verification failed");
-          }
-        },
-        prefill: {
-          name: `${user.firstName} ${user.lastName}`,
-          email: user.email,
-        },
-        theme: { color: "#10b981" },
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-    } catch (error) {
-      toast.error("Failed to initiate payment");
+      toast.success("Enrollment request sent! Admin will verify your payment.");
+      setEnrollmentStatus("pending");
+      setShowQrModal(false);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to send request");
     } finally {
       setPaymentLoading(false);
     }
+  };
+
+  const getEmbedUrl = (url: string) => {
+    if (url.includes("youtube.com") || url.includes("youtu.be")) {
+      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+      const match = url.match(regExp);
+      return match && match[2].length === 11 ? `https://www.youtube.com/embed/${match[2]}` : url;
+    }
+    if (url.includes("vimeo.com")) {
+      const regExp = /vimeo\.com\/([0-9]+)/;
+      const match = url.match(regExp);
+      return match ? `https://player.vimeo.com/video/${match[1]}` : url;
+    }
+    return url;
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-emerald-400" /></div>;
@@ -208,11 +195,20 @@ export default function CourseDetails() {
             >
               <div className="relative aspect-video rounded-[1.5rem] overflow-hidden mb-6 group">
                 {isEnrolled ? (
-                  <video
-                    src={`/${course.videoUrl}`}
-                    controls
-                    className="w-full h-full object-cover"
-                  />
+                  course.videoUrl.includes("youtube.com") || course.videoUrl.includes("youtu.be") || course.videoUrl.includes("vimeo.com") ? (
+                    <iframe
+                      src={getEmbedUrl(course.videoUrl)}
+                      className="w-full h-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <video
+                      src={course.videoUrl.startsWith("uploads") ? `/${course.videoUrl}` : course.videoUrl}
+                      controls
+                      className="w-full h-full object-cover"
+                    />
+                  )
                 ) : (
                   <>
                     <img
@@ -252,23 +248,31 @@ export default function CourseDetails() {
                       <Unlock className="w-5 h-5 text-emerald-400" />
                       <span className="text-sm font-bold text-emerald-400">You have full access to this course</span>
                     </div>
-                    <button className="w-full py-4 bg-white/5 hover:bg-white/10 text-white font-bold rounded-2xl transition-all border border-white/10">
-                      Download Resources
+                  </div>
+                ) : enrollmentStatus === "pending" ? (
+                  <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl flex items-center gap-3">
+                    <Clock className="w-5 h-5 text-yellow-500" />
+                    <span className="text-sm font-bold text-yellow-500">Enrollment request pending approval</span>
+                  </div>
+                ) : enrollmentStatus === "rejected" ? (
+                  <div className="space-y-4">
+                    <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3">
+                      <X className="w-5 h-5 text-red-400" />
+                      <span className="text-sm font-bold text-red-400">Enrollment request rejected. Contact support.</span>
+                    </div>
+                    <button
+                      onClick={() => setShowQrModal(true)}
+                      className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-2xl transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
+                    >
+                      Try Again <QrCode className="w-5 h-5" />
                     </button>
                   </div>
                 ) : (
                   <button
-                    onClick={handleEnroll}
-                    disabled={paymentLoading}
-                    className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 disabled:bg-emerald-500/50 text-black font-bold rounded-2xl transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 group"
+                    onClick={() => setShowQrModal(true)}
+                    className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-2xl transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 group"
                   >
-                    {paymentLoading ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (
-                      <>
-                        Enroll Now <ArrowLeft className="w-5 h-5 rotate-180 group-hover:translate-x-1 transition-transform" />
-                      </>
-                    )}
+                    Enroll Now <QrCode className="w-5 h-5 group-hover:scale-110 transition-transform" />
                   </button>
                 )}
 
@@ -309,6 +313,66 @@ export default function CourseDetails() {
           </div>
         </div>
       </div>
+      <AnimatePresence>
+        {showQrModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowQrModal(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-[#121212] border border-white/10 rounded-[2.5rem] p-8 text-center shadow-2xl"
+            >
+              <button
+                onClick={() => setShowQrModal(false)}
+                className="absolute top-6 right-6 p-2 text-white/40 hover:text-white transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+
+              <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <QrCode className="w-8 h-8 text-emerald-400" />
+              </div>
+
+              <h3 className="text-2xl font-bold mb-2">Scan to Pay</h3>
+              <p className="text-white/40 mb-8">Scan the QR code below to pay ₹{course.price} and request enrollment.</p>
+
+              <div className="bg-white p-4 rounded-3xl mb-8 inline-block">
+                {settings?.paymentQrCode ? (
+                  <img
+                    src={`/${settings.paymentQrCode}`}
+                    alt="Payment QR Code"
+                    className="w-48 h-48 object-contain"
+                  />
+                ) : (
+                  <div className="w-48 h-48 flex items-center justify-center text-black/20 font-bold border-2 border-dashed border-black/10">
+                    QR Not Set
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                <button
+                  onClick={handleRequestEnrollment}
+                  disabled={paymentLoading}
+                  className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 disabled:bg-emerald-500/50 text-black font-bold rounded-2xl transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
+                >
+                  {paymentLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "I've Paid, Request Access"}
+                </button>
+                <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold">
+                  Admin will verify your payment within 24 hours
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

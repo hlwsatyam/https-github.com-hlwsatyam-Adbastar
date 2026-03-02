@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { Routes, Route, Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, BookOpen, Settings, LogOut, Plus, Search, Trash2, Shield, ShieldOff, Edit } from "lucide-react";
+import { LayoutDashboard, Users, BookOpen, Settings, LogOut, Plus, Search, Trash2, Shield, ShieldOff, Edit, ClipboardList } from "lucide-react";
 import Overview from "./admin/Overview";
 import StudentManagement from "./admin/StudentManagement";
 import CourseManagement from "./admin/CourseManagement";
+import EnrollmentRequests from "./admin/EnrollmentRequests";
+import AdminSettings from "./admin/Settings";
 import { motion } from "motion/react";
 
 export default function AdminDashboard() {
@@ -13,6 +15,8 @@ export default function AdminDashboard() {
     { icon: LayoutDashboard, label: "Overview", path: "/admin" },
     { icon: Users, label: "Students", path: "/admin/students" },
     { icon: BookOpen, label: "Courses", path: "/admin/courses" },
+    { icon: ClipboardList, label: "Enrollments", path: "/admin/enrollments" },
+    { icon: Settings, label: "Settings", path: "/admin/settings" },
   ];
 
   return (
@@ -46,6 +50,8 @@ export default function AdminDashboard() {
           <Route path="/" element={<Overview />} />
           <Route path="/students" element={<StudentManagement />} />
           <Route path="/courses" element={<CourseManagement />} />
+          <Route path="/enrollments" element={<EnrollmentRequests />} />
+          <Route path="/settings" element={<AdminSettings />} />
         </Routes>
       </main>
     </div>
