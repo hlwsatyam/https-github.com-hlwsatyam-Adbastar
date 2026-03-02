@@ -39,13 +39,10 @@ export default function CourseDetails() {
   const [settings, setSettings] = useState<any>(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchCourse = async () => {
       try {
         const { data: courseData } = await axios.get(`/api/courses/${id}`);
         setCourse(courseData);
-
-        const { data: settingsData } = await axios.get("/api/admin/settings");
-        setSettings(settingsData);
 
         if (user) {
           const { data: enrollData } = await axios.get(`/api/courses/${id}/enrollment`, {
@@ -55,14 +52,25 @@ export default function CourseDetails() {
           setEnrollmentStatus(enrollData.status);
         }
       } catch (error) {
-        console.error("Error fetching data", error);
+        console.error("Error fetching course", error);
         toast.error("Course not found");
         navigate("/");
       } finally {
         setLoading(false);
       }
     };
-    fetchData();
+
+    const fetchSettings = async () => {
+      try {
+        const { data: settingsData } = await axios.get("/api/public/settings");
+        setSettings(settingsData);
+      } catch (error) {
+        console.error("Error fetching settings", error);
+      }
+    };
+
+    fetchCourse();
+    fetchSettings();
   }, [id, user, token, navigate]);
 
   const handleRequestEnrollment = async () => {

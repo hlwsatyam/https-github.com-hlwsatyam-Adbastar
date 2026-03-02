@@ -7,7 +7,7 @@ import EnrollmentRequest from "../models/EnrollmentRequest.ts";
 export const getSettings = async (req: any, res: any) => {
   let settings = await Settings.findOne();
   if (!settings) {
-    settings = await Settings.create({ paymentQrCode: "", whatsappNumber: "" });
+    settings = await Settings.create({ paymentQrCode: "", whatsappNumber: "7027944324" });
   }
   res.json(settings);
 };

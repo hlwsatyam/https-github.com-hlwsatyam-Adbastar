@@ -10,6 +10,7 @@ import authRoutes from "./server/routes/authRoutes.ts";
 import adminRoutes from "./server/routes/adminRoutes.ts";
 import courseRoutes from "./server/routes/courseRoutes.ts";
 import paymentRoutes from "./server/routes/paymentRoutes.ts";
+import publicRoutes from "./server/routes/publicRoutes.ts";
 
 dotenv.config();
 
@@ -51,6 +52,7 @@ async function startServer() {
   app.use("/api/admin", adminRoutes);
   app.use("/api/courses", courseRoutes);
   app.use("/api/payments", paymentRoutes);
+  app.use("/api/public", publicRoutes);
 
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", message: "Lumina Academy API is running" });

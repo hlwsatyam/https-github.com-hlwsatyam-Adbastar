@@ -8,7 +8,7 @@ export default function WhatsAppButton() {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const { data } = await axios.get("/api/admin/settings");
+        const { data } = await axios.get("/api/public/settings");
         setWhatsappNumber(data.whatsappNumber);
       } catch (error) {
         console.error("Error fetching settings", error);
